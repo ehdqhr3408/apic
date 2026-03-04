@@ -1,0 +1,13 @@
+kind: Plan
+apiVersion: api.ibm.com/v1
+metadata:
+  name: db_cicd_plan
+  namespace: apic_cicd
+  version: '1.0'
+  tags: []
+  description: ''
+spec:
+  qos:
+    withQuota:
+      db-cicd-plan:
+        - $ref: apic_cicd:Quota-ynicfe:1.0
