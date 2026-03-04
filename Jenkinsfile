@@ -19,8 +19,8 @@ pipeline {
       steps {
         sshagent(credentials: ['ssh-k8s-worker2']) {
           withCredentials([usernamePassword(credentialsId: 'apic-cred',
-                           usernameVariable: 'APIC_USER',
-                           passwordVariable: 'APIC_PASS')]) {
+                           usernameVariable: 'dblee',
+                           passwordVariable: 'dldnjs123!')]) {
 
             sh '''#!/usr/bin/env bash
 set -euo pipefail
