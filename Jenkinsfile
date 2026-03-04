@@ -2,10 +2,8 @@ pipeline {
   agent any
 
   environment {
-    // apic가 설치된 노드 (k8s-worker2 IP)
     DEPLOY_HOST = "10.0.0.80"
 
-    // APIC 접속정보
     APIC_SERVER  = "https://manager.apic12.e1.com"
     APIC_REALM   = "provider/default-idp-2"
     APIC_ORG     = "enterprise1"
@@ -29,28 +27,39 @@ set -euo pipefail
 
 WORK="/tmp/apic_cicd_${BUILD_TAG}"
 
+# 원격 작업 폴더 준비
+ssh -o StrictHostKeyChecking=no root@${DEPLOY_HOST} "rm -rf '${WORK}' && mkdir -p '${WORK}'"
+
 # 소스 전송
-ssh -o StrictHostKeyChecking=no root@${DEPLOY_HOST} "rm -rf ${WORK} && mkdir -p ${WORK}"
-scp -o StrictHostKeyChecking=no -r apic_cicd root@${DEPLOY_HOST}:${WORK}/
+scp -o StrictHostKeyChecking=no -r apic_cicd root@${DEPLOY_HOST}:"${WORK}/"
 
-# 배포 실행 (원격에서도 bash 강제, 변수 확장 분리)
-ssh -o StrictHostKeyChecking=no root@${DEPLOY_HOST} bash -lc "
-  set -euo pipefail
-  cd '${WORK}/apic_cicd'
+# 원격에서 bash로 실행 (로컬 변수 확장 충돌 방지)
+ssh -o StrictHostKeyChecking=no root@${DEPLOY_HOST} \
+  env WORK="${WORK}" \
+      APIC_SERVER="${APIC_SERVER}" \
+      APIC_REALM="${APIC_REALM}" \
+      APIC_ORG="${APIC_ORG}" \
+      APIC_CATALOG="${APIC_CATALOG}" \
+      APIC_USER="${APIC_USER}" \
+      APIC_PASS="${APIC_PASS}" \
+  bash -s <<'EOS'
+set -euo pipefail
 
-  apic version
-  apic login --server '${APIC_SERVER}' --realm '${APIC_REALM}' -u '${APIC_USER}' -p '${APIC_PASS}'
+cd "${WORK}/apic_cicd"
 
-  ls -1 *_prd.yml >/dev/null 2>&1 || { echo 'NO *_prd.yml found'; exit 1; }
+apic version
+apic login --server "${APIC_SERVER}" --realm "${APIC_REALM}" -u "${APIC_USER}" -p "${APIC_PASS}"
 
-  for f in *_prd.yml; do
-    echo \"=== Publishing \$f ===\"
-    apic products:publish \"\$f\" --server '${APIC_SERVER}' --org '${APIC_ORG}' --catalog '${APIC_CATALOG}'
-  done
-"
+ls -1 *_prd.yml >/dev/null 2>&1 || { echo "NO *_prd.yml found"; exit 1; }
+
+for p in *_prd.yml; do
+  echo "=== Publishing ${p} ==="
+  apic products:publish "${p}" --server "${APIC_SERVER}" --org "${APIC_ORG}" --catalog "${APIC_CATALOG}"
+done
+EOS
 
 # 정리
-ssh -o StrictHostKeyChecking=no root@${DEPLOY_HOST} "rm -rf ${WORK}"
+ssh -o StrictHostKeyChecking=no root@${DEPLOY_HOST} "rm -rf '${WORK}'"
 '''
           }
         }
