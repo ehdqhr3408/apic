@@ -67,7 +67,7 @@ test -n "${APIC_PASS}" || { echo "ERROR: APIC_PASS empty on remote"; exit 3; }
 cd "${WORK}/apic_cicd"
 
 apic version
-apic login --server "${APIC_SERVER}" --realm "${APIC_REALM}" -u "${APIC_USER}" -p "${APIC_PASS}"
+apic login --insecure-skip-tls-verify --server "${APIC_SERVER}" --realm "${APIC_REALM}" -u "${APIC_USER}" -p "${APIC_PASS}"
 
 ls -1 *_prd.yml >/dev/null 2>&1 || { echo "NO *_prd.yml found"; exit 4; }
 
