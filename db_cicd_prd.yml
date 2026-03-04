@@ -1,0 +1,13 @@
+kind: Product
+apiVersion: api.ibm.com/v1
+metadata:
+  name: db_cicd_prd
+  namespace: apic_cicd
+  version: '1.0'
+  tags: []
+  description: ''
+spec:
+  apis:
+    - $ref: apic_cicd:db_cicd_api:1.0
+  plans:
+    - $ref: apic_cicd:db_cicd_plan:1.0
