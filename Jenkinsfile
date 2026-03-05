@@ -9,7 +9,7 @@ pipeline {
     APIC_ORG     = "enterprise1"
     APIC_CATALOG = "skt"
 
-    GATEWAY_SERVICES = "e1-nano-gateway1"
+    GATEWAY_SERVICES = "e1-api-gateway"
 
     USE_SPACE  = "false"
     SPACE_NAME = ""
