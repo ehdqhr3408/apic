@@ -45,6 +45,7 @@ ARCHIVE="${WORK}/build.zip"
 # 원격 작업 폴더 준비 + 소스 전송
 ssh -o StrictHostKeyChecking=no root@${DEPLOY_HOST} "rm -rf '${WORK}' && mkdir -p '${WORK}'"
 scp -o StrictHostKeyChecking=no -r apic_cicd root@${DEPLOY_HOST}:"${WORK}/"
+scp -o StrictHostKeyChecking=no .apistudio-projects root@${DEPLOY_HOST}:"${WORK}/"
 
 # 원격에서 apic build -> projects:publish
 ssh -o StrictHostKeyChecking=no root@${DEPLOY_HOST} \
