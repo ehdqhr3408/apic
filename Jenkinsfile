@@ -11,7 +11,6 @@ pipeline {
 
     GATEWAY_SERVICES = "e1-nano-gateway1"
 
-    // Space 안 쓰면 그대로 두면 됨
     USE_SPACE  = "false"
     SPACE_NAME = ""
   }
@@ -33,7 +32,6 @@ pipeline {
             sh '''#!/usr/bin/env bash
 set -euo pipefail
 
-# Jenkins env에서 빈 값이 누락되는 경우 대비(핵심)
 : "${USE_SPACE:=false}"
 : "${SPACE_NAME:=}"
 
@@ -42,14 +40,16 @@ echo "APIC_USER=${APIC_USER}"
 echo "APIC_PASS length=${#APIC_PASS}"
 
 WORK="/tmp/apic_proj_${BUILD_TAG}"
-ZIP="${WORK}/project.zip"
+ARCHIVE="${WORK}/build.zip"
 
+# 원격 작업 폴더 준비 + 소스 전송
 ssh -o StrictHostKeyChecking=no root@${DEPLOY_HOST} "rm -rf '${WORK}' && mkdir -p '${WORK}'"
 scp -o StrictHostKeyChecking=no -r apic_cicd root@${DEPLOY_HOST}:"${WORK}/"
 
+# 원격에서 apic build -> projects:publish
 ssh -o StrictHostKeyChecking=no root@${DEPLOY_HOST} \
   env WORK="${WORK}" \
-      ZIP="${ZIP}" \
+      ARCHIVE="${ARCHIVE}" \
       APIC_SERVER="${APIC_SERVER}" \
       APIC_REALM="${APIC_REALM}" \
       APIC_ORG="${APIC_ORG}" \
@@ -65,17 +65,23 @@ set -euo pipefail
 : "${USE_SPACE:=false}"
 : "${SPACE_NAME:=}"
 
-cd "${WORK}"
-
-command -v zip >/dev/null 2>&1 || { echo "ERROR: zip command not found on deploy host"; exit 10; }
-
-rm -f "${ZIP}"
-zip -r "${ZIP}" apic_cicd >/dev/null
-
+echo "=== Remote environment ==="
+echo "WORK=${WORK}"
+echo "ARCHIVE=${ARCHIVE}"
+echo "node=$(node -v 2>/dev/null || echo NONE)"
 apic version
+
+# 로그인(TLS 스킵)
 apic login --insecure-skip-tls-verify --server "${APIC_SERVER}" --realm "${APIC_REALM}" -u "${APIC_USER}" -p "${APIC_PASS}"
 
-echo "=== Publishing project zip ==="
+# apic build: 프로젝트 자산을 툴킷 포맷 아카이브로 생성
+# -l 은 로컬 디렉토리(프로젝트들이 있는 상위 폴더)
+# FILE은 빌드할 프로젝트/자산(여기선 apic_cicd 폴더)
+apic build -l "${WORK}" -o "${ARCHIVE}" apic_cicd
+
+ls -lh "${ARCHIVE}" || true
+
+echo "=== Publishing built archive ==="
 if [ "${USE_SPACE}" = "true" ] && [ -n "${SPACE_NAME}" ]; then
   apic projects:publish \
     --insecure-skip-tls-verify \
@@ -85,7 +91,7 @@ if [ "${USE_SPACE}" = "true" ] && [ -n "${SPACE_NAME}" ]; then
     --scope space \
     --gateway_services "${GATEWAY_SERVICES}" \
     --migrate_subscriptions \
-    "${ZIP}"
+    "${ARCHIVE}"
 else
   apic projects:publish \
     --insecure-skip-tls-verify \
@@ -94,10 +100,11 @@ else
     --catalog "${APIC_CATALOG}" \
     --gateway_services "${GATEWAY_SERVICES}" \
     --migrate_subscriptions \
-    "${ZIP}"
+    "${ARCHIVE}"
 fi
 EOS
 
+# 정리
 ssh -o StrictHostKeyChecking=no root@${DEPLOY_HOST} "rm -rf '${WORK}'"
 '''
           }
